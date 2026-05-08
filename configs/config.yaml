@@ -1,0 +1,289 @@
+app:
+  name: spiringo
+  env: development
+  debug: true
+
+server:
+  addr: ":8080"
+  mode: "debug"
+
+log:
+  driver: "slog"
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+config_center:
+  enabled: false
+  type: "nacos"
+  nacos:
+    server_addr: "127.0.0.1:8848"
+    namespace: "public"
+    group: "DEFAULT_GROUP"
+    data_id: "spiringo"
+
+database:
+  default:
+    driver: "mysql"
+    dsn: "root:password@tcp(127.0.0.1:3306)/spiringo?charset=utf8mb4&parseTime=True&loc=Local"
+    max_idle: 10
+    max_open: 100
+    conn_max_lifetime: "1h"
+    read_replicas: []
+
+redis:
+  default:
+    addr: "127.0.0.1:6379"
+    password: ""
+    db: 0
+
+document:
+  enabled: false
+  driver: "mongodb"
+  mongodb:
+    uri: "mongodb://127.0.0.1:27017"
+    database: "spiringo"
+    timeout: "5s"
+
+cache:
+  driver: "memory" # memory or redis
+  redis:
+    addr: "127.0.0.1:6379"
+    password: ""
+    db: 0
+
+mq:
+  enabled: false
+  driver: "redis_stream"
+  redis:
+    addr: "127.0.0.1:6379"
+    password: ""
+    db: 0
+    prefix: "spiringo:mq"
+  rabbitmq:
+    url: "amqp://guest:guest@127.0.0.1:5672/"
+    exchange: "spiringo.events"
+    queue_prefix: "spiringo"
+  kafka:
+    brokers:
+      - "127.0.0.1:9092"
+    client_id: "spiringo"
+    group_id: "spiringo"
+    topic_prefix: "spiringo."
+
+lock:
+  enabled: false
+  driver: "redis"
+  redis:
+    addr: "127.0.0.1:6379"
+    password: ""
+    db: 0
+  zookeeper:
+    servers:
+      - "127.0.0.1:2181"
+    root: "/spiringo/locks"
+    session_timeout: "5s"
+
+queue:
+  enabled: true
+  workers: 4
+  buffer: 1024
+  max_retries: 3
+  retry_delay: "1s"
+
+storage:
+  enabled: false
+  type: "minio"
+  minio:
+    endpoint: "127.0.0.1:9000"
+    access_key: ""
+    secret_key: ""
+    use_ssl: false
+  ceph:
+    endpoint: ""
+    access_key: ""
+    secret_key: ""
+    use_ssl: false
+    public_url: ""
+
+search:
+  enabled: false
+  driver: "elasticsearch"
+  elasticsearch:
+    endpoint: "http://127.0.0.1:9200"
+    username: ""
+    password: ""
+    index: "spiringo"
+    timeout: "5s"
+
+metrics:
+  enabled: true
+  path: "/metrics"
+  report_path: "/metrics/report"
+  namespace: "spiringo"
+
+alert:
+  enabled: false
+  logger: true
+  webhook:
+    enabled: false
+    url: ""
+    timeout: "5s"
+    headers: {}
+  sentry:
+    enabled: false
+    dsn: ""
+    environment: "development"
+    release: ""
+    traces_sample_rate: 0
+    debug: false
+    flush_timeout: "2s"
+
+trace:
+  enabled: false
+  exporter: "logger" # logger, otlp, both
+  service:
+    name: "spiringo"
+  otlp:
+    endpoint: "http://127.0.0.1:4318/v1/traces"
+    timeout: "5s"
+    headers: {}
+
+modules:
+  auth:
+    enabled: true
+    jwt:
+      secret: "change-me-in-production"
+      access_expire: "2h"
+      refresh_expire: "168h"
+      issuer: "spiringo"
+    oauth:
+      wechat:
+        enabled: false
+        app_id: ""
+        app_secret: ""
+      google:
+        enabled: false
+        client_id: ""
+        client_secret: ""
+  user:
+    enabled: true
+    default_admin:
+      enabled: true
+      username: "admin_%s"
+      password: "changeme"
+      email_template: "admin@%s.spiringo"
+      nickname: "System Admin"
+  tenant:
+    enabled: true
+    strategy: "shared_db"
+  rbac:
+    enabled: true
+    auth_required: true
+  payment:
+    enabled: true
+    default_notify_url: ""
+    wechat:
+      enabled: false
+      app_id: ""
+      mch_id: ""
+      api_v3_key: ""
+      api_key: ""
+      serial_no: ""
+      private_key: ""
+      cert_path: ""
+    alipay:
+      enabled: false
+      app_id: ""
+      private_key: ""
+      is_prod: false
+      app_cert_path: ""
+      alipay_cert_path: ""
+      root_cert_path: ""
+    stripe:
+      enabled: false
+      secret_key: ""
+      webhook_secret: ""
+    paypal:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      sandbox: true
+      webhook_id: ""
+    unionpay:
+      enabled: false
+      mch_id: ""
+      api_key: ""
+      sandbox: true
+    cloudpay:
+      enabled: false
+      mch_id: ""
+      api_key: ""
+      gateway_url: ""
+    digital_rmb:
+      enabled: false
+      app_id: ""
+      merchant_id: ""
+      api_key: ""
+      gateway_url: ""
+      wallet_id: ""
+  qrcode:
+    enabled: true
+    default_size: 256
+    default_level: "M"
+    oss_prefix: "qrcode/"
+  notification:
+    enabled: false
+    events:
+      - "payment.failed"
+      - "tenant.suspended"
+    webhook:
+      enabled: false
+      urls: []
+      timeout: "5s"
+      headers: {}
+    email:
+      enabled: false
+      host: ""
+      port: 587
+      username: ""
+      password: ""
+      from: ""
+      to: []
+    inbox:
+      enabled: true
+
+middleware:
+  recovery: true
+  cors: true
+  request_id: true
+  rate_limit:
+    enabled: true
+    strategy: "sliding_window"
+    rate: 100
+    burst: 200
+  circuit_break:
+    enabled: false
+    threshold: 0.5
+    timeout: "30s"
+  tenant: true
+  auth:
+    enabled: false
+    jwt_secret: ""
+    public_paths:
+      - "/health"
+      - "/ready"
+      - "/system/report"
+      - "/system/report.json"
+      - "/metrics"
+      - "/metrics/report"
+      - "/api/v1/auth/login"
+      - "/api/v1/auth/register"
+      - "/api/v1/auth/refresh"
+      - "/api/v1/auth/oauth/*"
+      - "/api/v1/payment/callback/*"
+      - "/api/v1/qrcode/s/*"
+  idempotent:
+    enabled: false
+    header: "X-Idempotent-Key"
+  i18n: false

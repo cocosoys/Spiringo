@@ -1,0 +1,44 @@
+replicaCount: 2
+
+image:
+  repository: spiringo
+  tag: staging
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  host: spiringo.staging.example.com
+
+env:
+  APP_ENV: staging
+  SP_APP_DEBUG: "false"
+  SP_SERVER_ADDR: ":8080"
+  SP_SERVER_MODE: release
+  SP_LOG_LEVEL: info
+  SP_DATABASE_DEFAULT_DRIVER: mysql
+  SP_DATABASE_DEFAULT_DSN: "spiringo:spiringo@tcp(mysql:3306)/spiringo?charset=utf8mb4&parseTime=True&loc=Local"
+  SP_CACHE_DRIVER: redis
+  SP_CACHE_REDIS_ADDR: "redis:6379"
+  SP_MQ_ENABLED: "true"
+  SP_MQ_DRIVER: redis_stream
+  SP_MQ_REDIS_ADDR: "redis:6379"
+  SP_METRICS_ENABLED: "true"
+  SP_TRACE_ENABLED: "true"
+  SP_TRACE_EXPORTER: logger
+  SP_ALERT_ENABLED: "true"
+  SP_ALERT_LOGGER: "true"
+
+secretEnv:
+  SP_MODULES_AUTH_JWT_SECRET: replace-in-staging-secret-store
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 1Gi

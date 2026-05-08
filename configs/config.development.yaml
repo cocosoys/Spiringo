@@ -1,0 +1,46 @@
+database:
+  default:
+    driver: "sqlite"
+    dsn: "file:spiringo_dev?mode=memory&cache=shared"
+    max_idle: 1
+    max_open: 1
+    conn_max_lifetime: "0s"
+    read_replicas: []
+
+document:
+  enabled: false
+
+cache:
+  driver: "memory"
+
+mq:
+  enabled: false
+
+queue:
+  enabled: true
+  workers: 2
+  buffer: 256
+  max_retries: 1
+  retry_delay: "250ms"
+
+storage:
+  enabled: false
+
+search:
+  enabled: false
+
+metrics:
+  enabled: true
+
+alert:
+  enabled: false
+
+trace:
+  enabled: false
+  exporter: "logger"
+  service:
+    name: "spiringo-dev"
+  otlp:
+    endpoint: "http://127.0.0.1:4318/v1/traces"
+    timeout: "5s"
+    headers: {}

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: spiringo
+    orgId: 1
+    folder: Spiringo
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

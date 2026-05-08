@@ -1,0 +1,39 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: spiringo
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "10"
+    spec:
+      containers:
+        - image: spiringo-serverless:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_ENV
+              value: production
+            - name: PORT
+              value: "8080"
+            - name: SP_DATABASE_DEFAULT_DRIVER
+              value: mysql
+            - name: SP_DATABASE_DEFAULT_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: spiringo-secrets
+                  key: database-dsn
+            - name: SP_CACHE_DRIVER
+              value: redis
+            - name: SP_CACHE_REDIS_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: spiringo-secrets
+                  key: redis-addr
+            - name: SP_MODULES_AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: spiringo-secrets
+                  key: jwt-secret

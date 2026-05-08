@@ -1,0 +1,9 @@
+.git
+.idea
+.omx
+.qwen
+bin
+coverage.txt
+deployments/docker-compose/.data
+tmp
+*.log

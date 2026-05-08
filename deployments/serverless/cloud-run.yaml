@@ -1,0 +1,35 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: spiringo
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/max-scale: "20"
+    spec:
+      containerConcurrency: 80
+      containers:
+        - image: gcr.io/PROJECT_ID/spiringo-serverless:latest
+          ports:
+            - name: http1
+              containerPort: 8080
+          env:
+            - name: APP_ENV
+              value: production
+            - name: PORT
+              value: "8080"
+            - name: SP_DATABASE_DEFAULT_DRIVER
+              value: mysql
+            - name: SP_DATABASE_DEFAULT_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: spiringo-database-dsn
+                  key: latest
+            - name: SP_MODULES_AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: spiringo-jwt-secret
+                  key: latest

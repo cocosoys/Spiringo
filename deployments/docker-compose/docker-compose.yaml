@@ -1,0 +1,183 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+    image: spiringo:latest
+    container_name: spiringo-app
+    environment:
+      APP_ENV: production
+      SP_SERVER_ADDR: ":8080"
+      SP_LOG_DRIVER: slog
+      SP_DATABASE_DEFAULT_DRIVER: mysql
+      SP_DATABASE_DEFAULT_DSN: "spiringo:spiringo@tcp(mysql:3306)/spiringo?charset=utf8mb4&parseTime=True&loc=Local"
+      SP_CACHE_DRIVER: redis
+      SP_CACHE_REDIS_ADDR: "redis:6379"
+      SP_MQ_ENABLED: "true"
+      SP_MQ_DRIVER: redis_stream
+      SP_MQ_REDIS_ADDR: "redis:6379"
+      SP_MQ_RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      SP_MQ_RABBITMQ_EXCHANGE: "spiringo.events"
+      SP_MQ_RABBITMQ_QUEUE_PREFIX: "spiringo"
+      SP_MQ_KAFKA_BROKERS: "kafka:9092"
+      SP_MQ_KAFKA_CLIENT_ID: "spiringo"
+      SP_MQ_KAFKA_GROUP_ID: "spiringo"
+      SP_MQ_KAFKA_TOPIC_PREFIX: "spiringo."
+      SP_LOCK_ENABLED: "false"
+      SP_LOCK_DRIVER: redis
+      SP_LOCK_REDIS_ADDR: "redis:6379"
+      SP_LOCK_ZOOKEEPER_SERVERS: "zookeeper:2181"
+      SP_LOCK_ZOOKEEPER_ROOT: "/spiringo/locks"
+      SP_LOCK_ZOOKEEPER_SESSION_TIMEOUT: "5s"
+      SP_ALERT_ENABLED: "true"
+      SP_ALERT_LOGGER: "true"
+      SP_ALERT_SENTRY_ENABLED: "false"
+      SP_ALERT_SENTRY_DSN: ""
+      SP_ALERT_SENTRY_ENVIRONMENT: production
+      SP_ALERT_SENTRY_FLUSH_TIMEOUT: "2s"
+      SP_MODULES_AUTH_JWT_SECRET: "change-me-before-production"
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    container_name: spiringo-mysql
+    environment:
+      MYSQL_DATABASE: spiringo
+      MYSQL_USER: spiringo
+      MYSQL_PASSWORD: spiringo
+      MYSQL_ROOT_PASSWORD: root-password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot-password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: spiringo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    container_name: spiringo-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  zookeeper:
+    image: zookeeper:3.9
+    container_name: spiringo-zookeeper
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+
+  kafka:
+    image: bitnami/kafka:3.9
+    container_name: spiringo-kafka
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: spiringo-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: spiringo
+      MINIO_ROOT_PASSWORD: spiringo-minio-password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.18.0
+    container_name: spiringo-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    container_name: spiringo-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.0.1
+    container_name: spiringo-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: spiringo
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+  minio_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:

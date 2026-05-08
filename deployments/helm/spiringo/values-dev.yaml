@@ -1,0 +1,44 @@
+replicaCount: 1
+
+image:
+  repository: spiringo
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  host: spiringo.dev.local
+
+env:
+  APP_ENV: development
+  SP_APP_DEBUG: "true"
+  SP_SERVER_ADDR: ":8080"
+  SP_SERVER_MODE: debug
+  SP_LOG_LEVEL: debug
+  SP_DATABASE_DEFAULT_DRIVER: mysql
+  SP_DATABASE_DEFAULT_DSN: "spiringo:spiringo@tcp(mysql:3306)/spiringo?charset=utf8mb4&parseTime=True&loc=Local"
+  SP_CACHE_DRIVER: redis
+  SP_CACHE_REDIS_ADDR: "redis:6379"
+  SP_MQ_ENABLED: "true"
+  SP_MQ_DRIVER: redis_stream
+  SP_MQ_REDIS_ADDR: "redis:6379"
+  SP_METRICS_ENABLED: "true"
+  SP_TRACE_ENABLED: "true"
+  SP_TRACE_EXPORTER: logger
+  SP_ALERT_ENABLED: "true"
+  SP_ALERT_LOGGER: "true"
+
+secretEnv:
+  SP_MODULES_AUTH_JWT_SECRET: dev-secret-change-before-shared-use
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

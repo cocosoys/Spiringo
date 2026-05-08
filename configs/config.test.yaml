@@ -1,0 +1,59 @@
+app:
+  env: test
+  debug: false
+
+server:
+  mode: "test"
+
+log:
+  level: "error"
+
+database:
+  default:
+    driver: "sqlite"
+    dsn: "file::memory:?cache=shared"
+    max_idle: 1
+    max_open: 1
+    read_replicas: []
+
+cache:
+  driver: "memory"
+
+mq:
+  enabled: false
+
+lock:
+  enabled: false
+
+storage:
+  enabled: false
+
+search:
+  enabled: false
+
+metrics:
+  enabled: false
+
+alert:
+  enabled: false
+
+trace:
+  enabled: false
+
+modules:
+  auth:
+    jwt:
+      secret: "test-secret"
+  user:
+    default_admin:
+      enabled: false
+
+middleware:
+  rate_limit:
+    enabled: false
+  circuit_break:
+    enabled: false
+  auth:
+    enabled: false
+  idempotent:
+    enabled: false

@@ -1,0 +1,65 @@
+name: CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - dev
+          - test
+          - staging
+          - prod
+      image_repository:
+        description: "Image repository to deploy"
+        required: true
+        default: "spiringo"
+      image_tag:
+        description: "Image tag to deploy"
+        required: true
+        default: "latest"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Render Helm chart
+        run: |
+          helm template spiringo deployments/helm/spiringo \
+            -f deployments/helm/spiringo/values-${{ inputs.environment }}.yaml \
+            --set image.repository="${{ inputs.image_repository }}" \
+            --set image.tag="${{ inputs.image_tag }}"
+
+  deploy-kubernetes:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: ${{ vars.ENABLE_SPIRINGO_DEPLOY == 'true' }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "${{ secrets.KUBE_CONFIG }}" > "$HOME/.kube/config"
+
+      - name: Deploy Helm release
+        run: |
+          helm upgrade --install spiringo deployments/helm/spiringo \
+            --namespace spiringo --create-namespace \
+            -f deployments/helm/spiringo/values-${{ inputs.environment }}.yaml \
+            --set image.repository="${{ inputs.image_repository }}" \
+            --set image.tag="${{ inputs.image_tag }}"

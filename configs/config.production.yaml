@@ -1,0 +1,50 @@
+app:
+  env: production
+  debug: false
+
+server:
+  mode: "release"
+
+log:
+  level: "info"
+  format: "json"
+
+config_center:
+  enabled: false
+
+cache:
+  driver: "redis"
+
+mq:
+  enabled: true
+
+lock:
+  enabled: true
+
+metrics:
+  enabled: true
+
+alert:
+  enabled: true
+  logger: true
+
+trace:
+  enabled: true
+
+modules:
+  auth:
+    jwt:
+      secret: "change-me-before-production"
+  user:
+    default_admin:
+      enabled: false
+
+middleware:
+  rate_limit:
+    enabled: true
+  circuit_break:
+    enabled: true
+  auth:
+    enabled: true
+  idempotent:
+    enabled: true

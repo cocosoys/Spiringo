@@ -1,0 +1,56 @@
+replicaCount: 2
+
+image:
+  repository: spiringo
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  host: spiringo.local
+
+env:
+  APP_ENV: production
+  SP_SERVER_ADDR: ":8080"
+  SP_LOG_DRIVER: slog
+  SP_DATABASE_DEFAULT_DRIVER: mysql
+  SP_DATABASE_DEFAULT_DSN: "spiringo:spiringo@tcp(mysql:3306)/spiringo?charset=utf8mb4&parseTime=True&loc=Local"
+  SP_CACHE_DRIVER: redis
+  SP_CACHE_REDIS_ADDR: "redis:6379"
+  SP_MQ_ENABLED: "true"
+  SP_MQ_DRIVER: redis_stream
+  SP_MQ_REDIS_ADDR: "redis:6379"
+  SP_MQ_RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+  SP_MQ_RABBITMQ_EXCHANGE: "spiringo.events"
+  SP_MQ_RABBITMQ_QUEUE_PREFIX: "spiringo"
+  SP_MQ_KAFKA_BROKERS: "kafka:9092"
+  SP_MQ_KAFKA_CLIENT_ID: "spiringo"
+  SP_MQ_KAFKA_GROUP_ID: "spiringo"
+  SP_MQ_KAFKA_TOPIC_PREFIX: "spiringo."
+  SP_LOCK_ENABLED: "false"
+  SP_LOCK_DRIVER: redis
+  SP_LOCK_REDIS_ADDR: "redis:6379"
+  SP_LOCK_ZOOKEEPER_SERVERS: "zookeeper:2181"
+  SP_LOCK_ZOOKEEPER_ROOT: "/spiringo/locks"
+  SP_LOCK_ZOOKEEPER_SESSION_TIMEOUT: "5s"
+  SP_ALERT_ENABLED: "true"
+  SP_ALERT_LOGGER: "true"
+  SP_ALERT_SENTRY_ENABLED: "false"
+  SP_ALERT_SENTRY_DSN: ""
+  SP_ALERT_SENTRY_ENVIRONMENT: production
+  SP_ALERT_SENTRY_FLUSH_TIMEOUT: "2s"
+
+secretEnv:
+  SP_MODULES_AUTH_JWT_SECRET: change-me-before-production
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

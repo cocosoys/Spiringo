@@ -1,0 +1,1470 @@
+openapi: 3.0.3
+info:
+  title: Spiringo API
+  version: 0.2.0
+  description: REST API contract for the current Spiringo modular-monolith modules.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: system
+  - name: auth
+  - name: user
+  - name: tenant
+  - name: rbac
+  - name: payment
+  - name: qrcode
+  - name: notification
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Application is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /ready:
+    get:
+      tags: [system]
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Application is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+        "503":
+          description: A dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+  /metrics:
+    get:
+      tags: [system]
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema:
+                type: string
+  /metrics/report:
+    get:
+      tags: [system]
+      summary: Metrics report as Markdown
+      responses:
+        "200":
+          description: Metrics report
+          content:
+            text/markdown:
+              schema:
+                type: string
+  /system/report:
+    get:
+      tags: [system]
+      summary: Runtime report as Markdown
+      responses:
+        "200":
+          description: Runtime report
+          content:
+            text/markdown:
+              schema:
+                type: string
+  /system/report.json:
+    get:
+      tags: [system]
+      summary: Runtime report as JSON
+      responses:
+        "200":
+          description: Runtime report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuntimeReport"
+
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TokenResponse"
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      summary: Register a user and return tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TokenResponse"
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout current bearer token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TokenResponse"
+  /api/v1/auth/oauth/{provider}:
+    get:
+      tags: [auth]
+      summary: Redirect to OAuth provider
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+        - name: redirect_url
+          in: query
+          schema:
+            type: string
+            format: uri
+      responses:
+        "302":
+          description: Provider redirect
+  /api/v1/auth/oauth/{provider}/callback:
+    get:
+      tags: [auth]
+      summary: OAuth callback
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: redirect_url
+          in: query
+          schema:
+            type: string
+            format: uri
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TokenResponse"
+
+  /api/v1/user:
+    get:
+      tags: [user]
+      summary: List users
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: User page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPageResponse"
+    post:
+      tags: [user]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponseEnvelope"
+  /api/v1/user/{id}:
+    get:
+      tags: [user]
+      summary: Get user
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponseEnvelope"
+    put:
+      tags: [user]
+      summary: Update user
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponseEnvelope"
+    delete:
+      tags: [user]
+      summary: Delete user
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+
+  /api/v1/tenant:
+    get:
+      tags: [tenant]
+      summary: List tenants
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Tenant page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantPageResponse"
+    post:
+      tags: [tenant]
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantRequest"
+      responses:
+        "201":
+          description: Created tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantResponseEnvelope"
+  /api/v1/tenant/{id}:
+    get:
+      tags: [tenant]
+      summary: Get tenant
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: Tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantResponseEnvelope"
+    put:
+      tags: [tenant]
+      summary: Update tenant
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTenantRequest"
+      responses:
+        "200":
+          description: Updated tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantResponseEnvelope"
+    delete:
+      tags: [tenant]
+      summary: Delete tenant
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+
+  /api/v1/rbac/roles:
+    get:
+      tags: [rbac]
+      summary: List roles
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Role page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePageResponse"
+    post:
+      tags: [rbac]
+      summary: Create role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+      responses:
+        "201":
+          description: Created role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponseEnvelope"
+  /api/v1/rbac/roles/{id}:
+    put:
+      tags: [rbac]
+      summary: Update role
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponseEnvelope"
+    delete:
+      tags: [rbac]
+      summary: Delete role
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /api/v1/rbac/permissions:
+    get:
+      tags: [rbac]
+      summary: List permissions
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Permission page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionPageResponse"
+  /api/v1/rbac/roles/{id}/permissions:
+    post:
+      tags: [rbac]
+      summary: Assign permissions to a role
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignPermissionsRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+
+  /api/v1/payment/create:
+    post:
+      tags: [payment]
+      summary: Create payment order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: Created payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrderResponseEnvelope"
+  /api/v1/payment/callback/{channel}:
+    post:
+      tags: [payment]
+      summary: Payment callback
+      description: Callback body and success response are channel specific.
+      parameters:
+        - name: channel
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/PaymentChannel"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Channel-specific success response
+  /api/v1/payment/refund:
+    post:
+      tags: [payment]
+      summary: Create refund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefundRequest"
+      responses:
+        "200":
+          description: Refund result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundResponseEnvelope"
+  /api/v1/payment/query/{id}:
+    get:
+      tags: [payment]
+      summary: Query local payment order by id
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: Payment order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentModelResponseEnvelope"
+  /api/v1/payment/close/{id}:
+    post:
+      tags: [payment]
+      summary: Close unpaid payment order
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: Closed order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentModelResponseEnvelope"
+
+  /api/v1/qrcode/generate:
+    post:
+      tags: [qrcode]
+      summary: Generate QR code
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [image]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateQRCodeRequest"
+      responses:
+        "200":
+          description: PNG bytes when format=image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "201":
+          description: QR code metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QRCodeResponseEnvelope"
+  /api/v1/qrcode/parse:
+    post:
+      tags: [qrcode]
+      summary: Parse QR code from image upload, image URL, or base64 image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseQRCodeRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Parsed QR content
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          content:
+                            type: string
+  /api/v1/qrcode/s/{code}:
+    get:
+      tags: [qrcode]
+      summary: Resolve short QR code
+      parameters:
+        - $ref: "#/components/parameters/ShortCode"
+      responses:
+        "302":
+          description: Redirect for URL payloads
+        "200":
+          description: Content payload
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          content:
+                            type: string
+  /api/v1/qrcode/stats/{code}:
+    get:
+      tags: [qrcode]
+      summary: QR short-code statistics
+      parameters:
+        - $ref: "#/components/parameters/ShortCode"
+      responses:
+        "200":
+          description: Scan statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QRCodeStatsResponseEnvelope"
+
+  /api/v1/notification/send:
+    post:
+      tags: [notification]
+      summary: Send notification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationRequest"
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          sent:
+                            type: boolean
+  /api/v1/notification/inbox:
+    get:
+      tags: [notification]
+      summary: List inbox messages
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: event
+          in: query
+          schema:
+            type: string
+        - name: recipient_id
+          in: query
+          schema:
+            type: string
+        - name: unread_only
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Inbox page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPageResponse"
+  /api/v1/notification/inbox/{id}/read:
+    put:
+      tags: [notification]
+      summary: Mark inbox message as read
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - name: recipient_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          read:
+                            type: boolean
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    ShortCode:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+    Provider:
+      name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [wechat, qq, google, discord, telegram, x, dingtalk, douyin, work_wechat]
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    OK:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+  schemas:
+    APIResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: success
+        data:
+          nullable: true
+          oneOf:
+            - type: object
+            - type: array
+              items: {}
+            - type: string
+            - type: number
+            - type: boolean
+    PageData:
+      type: object
+      required: [list, total, page, page_size]
+      properties:
+        list:
+          type: array
+          items: {}
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    ReadyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, unavailable]
+        database:
+          type: string
+    RuntimeReport:
+      type: object
+      properties:
+        app_name:
+          type: string
+        env:
+          type: string
+        modules:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModuleSnapshot"
+        infrastructure:
+          $ref: "#/components/schemas/InfrastructureSnapshot"
+        metrics:
+          type: object
+          additionalProperties: true
+          nullable: true
+    ModuleSnapshot:
+      type: object
+      properties:
+        name:
+          type: string
+        state:
+          type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+        skipped:
+          type: boolean
+    InfrastructureSnapshot:
+      type: object
+      properties:
+        database:
+          type: boolean
+        document:
+          type: boolean
+        cache:
+          type: boolean
+        lock:
+          type: boolean
+        metrics:
+          type: boolean
+        alerts:
+          type: boolean
+        mq:
+          type: boolean
+        queue:
+          type: boolean
+        search:
+          type: boolean
+        storage:
+          type: boolean
+        trace:
+          type: boolean
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 64
+        password:
+          type: string
+          minLength: 6
+          maxLength: 64
+          format: password
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        email:
+          type: string
+          format: email
+          maxLength: 128
+        phone:
+          type: string
+          maxLength: 20
+        password:
+          type: string
+          minLength: 6
+          maxLength: 64
+          format: password
+        nickname:
+          type: string
+          maxLength: 64
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          format: int64
+        token_type:
+          type: string
+          example: Bearer
+
+    CreateUserRequest:
+      allOf:
+        - $ref: "#/components/schemas/RegisterRequest"
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 128
+        phone:
+          type: string
+          maxLength: 20
+        nickname:
+          type: string
+          maxLength: 64
+        avatar:
+          type: string
+          maxLength: 512
+        status:
+          type: string
+          enum: [active, disabled]
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        nickname:
+          type: string
+        avatar:
+          type: string
+        status:
+          type: string
+        tenant_id:
+          type: string
+    UserResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/User"
+    UserPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: "#/components/schemas/PageData"
+                - type: object
+                  properties:
+                    list:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/User"
+
+    CreateTenantRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 128
+        code:
+          type: string
+          minLength: 2
+          maxLength: 64
+        strategy:
+          type: string
+          enum: [shared_db, schema, database]
+        domain:
+          type: string
+          maxLength: 256
+    UpdateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 128
+        domain:
+          type: string
+          maxLength: 256
+        status:
+          type: string
+          enum: [active, suspended, expired]
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        strategy:
+          type: string
+        status:
+          type: string
+        domain:
+          type: string
+        logo_url:
+          type: string
+        expire_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    TenantResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Tenant"
+    TenantPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: "#/components/schemas/PageData"
+                - type: object
+                  properties:
+                    list:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Tenant"
+
+    CreateRoleRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 64
+        code:
+          type: string
+          minLength: 2
+          maxLength: 64
+        description:
+          type: string
+          maxLength: 256
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 64
+        description:
+          type: string
+          maxLength: 256
+        status:
+          type: string
+          enum: [active, disabled]
+    AssignPermissionsRequest:
+      type: object
+      required: [permission_ids]
+      properties:
+        permission_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        tenant_id:
+          type: string
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        resource:
+          type: string
+        action:
+          type: string
+        parent_id:
+          type: string
+        sort_order:
+          type: integer
+    RoleResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Role"
+    RolePageResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: "#/components/schemas/PageData"
+                - type: object
+                  properties:
+                    list:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Role"
+    PermissionPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: "#/components/schemas/PageData"
+                - type: object
+                  properties:
+                    list:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Permission"
+
+    PaymentChannel:
+      type: string
+      enum: [wechat, alipay, unionpay, cloudpay, digital_rmb, stripe, paypal]
+    PaymentScene:
+      type: string
+      enum: [jsapi, app, h5, native, qrcode]
+    PaymentStatus:
+      type: string
+      enum: [pending, paid, failed, closed, refunding, refunded]
+    CreatePaymentRequest:
+      type: object
+      required: [out_trade_no, amount, subject, channel, scene]
+      properties:
+        out_trade_no:
+          type: string
+          minLength: 1
+          maxLength: 64
+        amount:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Amount in minor units.
+        currency:
+          type: string
+          maxLength: 8
+          default: CNY
+        subject:
+          type: string
+          maxLength: 256
+        channel:
+          $ref: "#/components/schemas/PaymentChannel"
+        scene:
+          $ref: "#/components/schemas/PaymentScene"
+        notify_url:
+          type: string
+          maxLength: 512
+        return_url:
+          type: string
+          maxLength: 512
+        open_id:
+          type: string
+          maxLength: 128
+    RefundRequest:
+      type: object
+      required: [out_trade_no, out_refund_no, total_amount, refund_amount]
+      properties:
+        out_trade_no:
+          type: string
+        out_refund_no:
+          type: string
+        total_amount:
+          type: integer
+          format: int64
+          minimum: 1
+        refund_amount:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type: string
+          maxLength: 256
+    PaymentOrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        out_trade_no:
+          type: string
+        trade_no:
+          type: string
+        channel:
+          $ref: "#/components/schemas/PaymentChannel"
+        scene:
+          $ref: "#/components/schemas/PaymentScene"
+        amount:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        subject:
+          type: string
+        status:
+          $ref: "#/components/schemas/PaymentStatus"
+        pay_url:
+          type: string
+        qr_code:
+          type: string
+        pay_params:
+          nullable: true
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: string
+    PaymentModel:
+      allOf:
+        - $ref: "#/components/schemas/PaymentOrderResponse"
+        - type: object
+          properties:
+            user_id:
+              type: string
+            notify_url:
+              type: string
+            return_url:
+              type: string
+            paid_at:
+              type: string
+              format: date-time
+              nullable: true
+            expired_at:
+              type: string
+              format: date-time
+              nullable: true
+    Refund:
+      type: object
+      properties:
+        id:
+          type: string
+        out_refund_no:
+          type: string
+        out_trade_no:
+          type: string
+        refund_no:
+          type: string
+        total_amount:
+          type: integer
+          format: int64
+        refund_amount:
+          type: integer
+          format: int64
+        reason:
+          type: string
+        status:
+          type: string
+        channel:
+          $ref: "#/components/schemas/PaymentChannel"
+        refunded_at:
+          type: string
+          format: date-time
+          nullable: true
+    PaymentOrderResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaymentOrderResponse"
+    PaymentModelResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaymentModel"
+    RefundResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Refund"
+
+    GenerateQRCodeRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 64
+          maximum: 1024
+        level:
+          type: string
+          enum: [low, medium, high, highest]
+        foreground_color:
+          type: string
+          maxLength: 16
+          example: "#111111"
+        background_color:
+          type: string
+          maxLength: 16
+          example: "#ffffff"
+        logo_url:
+          type: string
+          maxLength: 512
+        logo_size:
+          type: integer
+          minimum: 16
+          maximum: 512
+    ParseQRCodeRequest:
+      type: object
+      properties:
+        image_url:
+          type: string
+          format: uri
+        image_base64:
+          type: string
+          description: Raw base64 image bytes or a data URL.
+        image_data:
+          type: string
+          description: Compatibility alias for image_base64.
+    QRCode:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        short_code:
+          type: string
+        image_url:
+          type: string
+        short_url:
+          type: string
+    QRCodeStats:
+      type: object
+      properties:
+        short_code:
+          type: string
+        scan_count:
+          type: integer
+          format: int64
+        content:
+          type: string
+    QRCodeResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/QRCode"
+    QRCodeStatsResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/QRCodeStats"
+
+    SendNotificationRequest:
+      type: object
+      required: [event, subject]
+      properties:
+        event:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error, critical]
+        subject:
+          type: string
+          maxLength: 256
+        content:
+          type: string
+          maxLength: 4096
+        tenant_id:
+          type: string
+          maxLength: 64
+        recipient_id:
+          type: string
+          maxLength: 64
+        payload:
+          type: object
+          additionalProperties: true
+    NotificationMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        event:
+          type: string
+        severity:
+          type: string
+        subject:
+          type: string
+        content:
+          type: string
+        tenant_id:
+          type: string
+        recipient_id:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    NotificationPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: "#/components/schemas/PageData"
+                - type: object
+                  properties:
+                    list:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/NotificationMessage"

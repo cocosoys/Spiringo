@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "1"
+      GOARCH: amd64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags="-s -w" -o dist/spiringo ./cmd/spiringo
+          go build -trimpath -ldflags="-s -w" -o dist/spiringo-cli ./cmd/spiringo-cli
+          go build -trimpath -ldflags="-s -w" -o dist/spiringo-serverless ./cmd/spiringo-serverless
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spiringo-linux-amd64
+          path: dist/*
