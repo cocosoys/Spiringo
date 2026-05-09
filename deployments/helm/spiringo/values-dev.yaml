@@ -14,9 +14,12 @@ ingress:
   host: spiringo.dev.local
 
 env:
-  APP_ENV: development
+  APP_ENV: dev
   SP_APP_DEBUG: "true"
-  SP_SERVER_ADDR: ":8080"
+  SP_SERVER_HOST: "0.0.0.0"
+  SP_SERVER_PORT: "8080"
+  SP_SERVER_PUBLIC_URL: "http://127.0.0.1:8080"
+  SP_SERVER_API_BASE_URL: "http://127.0.0.1:8080/api/v1"
   SP_SERVER_MODE: debug
   SP_LOG_LEVEL: debug
   SP_DATABASE_DEFAULT_DRIVER: mysql

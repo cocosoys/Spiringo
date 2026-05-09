@@ -63,7 +63,7 @@ func (m *Manager) SetConfigDir(dir string) {
 // English: SetEnv executes the corresponding workflow in this package.
 // SetEnv 设置环境
 func (m *Manager) SetEnv(env string) {
-	m.env = env
+	m.env = NormalizeEnv(env)
 }
 
 // 中文：AddSource 执行当前包中的对应流程。
@@ -76,7 +76,7 @@ func (m *Manager) AddSource(source Source) {
 // 中文：Load 执行当前包中的对应流程。
 // English: Load executes the corresponding workflow in this package.
 // Load 加载所有配置
-// 优先级：环境变量 > 配置中心 > 环境配置文件 > 默认配置文件 > 代码默认值
+// 优先级：环境变量 > 配置中心 > 当前环境段 > 默认配置文件 > 代码默认值
 func (m *Manager) Load() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -93,18 +93,16 @@ func (m *Manager) Load() error {
 		}
 	}
 
-	// 2. 加载环境特定配置文件（覆盖默认配置）
-	if m.env != "" {
-		envFile := fmt.Sprintf("config.%s", m.env)
-		m.viper.SetConfigName(envFile)
-		if err := m.viper.MergeInConfig(); err != nil {
-			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-				return fmt.Errorf("merge env config %s: %w", envFile, err)
-			}
-		}
+	if m.env == "" {
+		m.env = NormalizeEnv(m.viper.GetString("app.env"))
 	}
+	if m.env == "" {
+		m.env = "local"
+	}
+	m.applyEnvironmentProfileLocked(m.env)
+	m.viper.Set("app.env", m.env)
 
-	// 3. Load pluggable sources from low to high priority so higher sources win.
+	// 2. Load pluggable sources from low to high priority so higher sources win.
 	sources := append([]Source(nil), m.sources...)
 	sort.SliceStable(sources, func(i, j int) bool {
 		return sources[i].Priority() < sources[j].Priority()
@@ -119,7 +117,7 @@ func (m *Manager) Load() error {
 		}
 	}
 
-	// 4. Environment variables are always the final override layer.
+	// 3. Environment variables are always the final override layer.
 	envValues, err := NewEnvSource(100).Read()
 	if err != nil {
 		return fmt.Errorf("read config source env: %w", err)
@@ -129,6 +127,18 @@ func (m *Manager) Load() error {
 	}
 
 	return nil
+}
+
+// 中文：applyEnvironmentProfileLocked 将单一配置文件中的 environments.<env> 覆盖到根配置。
+// English: applyEnvironmentProfileLocked overlays environments.<env> from the single config file onto root settings.
+func (m *Manager) applyEnvironmentProfileLocked(env string) {
+	profile := m.viper.GetStringMap("environments." + env)
+	for key, value := range flattenSettings(profile, "") {
+		if strings.HasPrefix(key, "environments.") {
+			continue
+		}
+		m.viper.Set(key, value)
+	}
 }
 
 // 中文：Get 执行当前包中的对应流程。

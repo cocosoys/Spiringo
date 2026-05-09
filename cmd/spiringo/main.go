@@ -49,7 +49,7 @@ func runMigrate(args []string) error {
 // English: newApplication executes the corresponding workflow in this package.
 func newApplication(args []string) (*app.App, error) {
 	fs := flag.NewFlagSet("spiringo", flag.ContinueOnError)
-	env := fs.String("env", "", "runtime environment name")
+	env := fs.String("env", "", "runtime environment name (local, dev, prod)")
 	configDir := fs.String("config", "configs", "configuration directory")
 	if err := fs.Parse(args); err != nil {
 		return nil, err

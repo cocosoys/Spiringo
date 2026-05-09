@@ -343,8 +343,7 @@ spiringo/
 │       └── constants.go
 │
 ├── configs/                         # ===== 配置文件 =====
-│   ├── config.yaml                  # 默认配置
-│   ├── config.test.yaml             # 测试环境
+│   ├── config.yaml                  # 唯一运行配置，内含 app.env 与 environments.local/dev/prod
 │   └── config.example.yaml          # 示例配置
 │
 ├── deployments/                     # ===== 部署相关 =====
@@ -652,12 +651,16 @@ type Source interface {
 ```yaml
 app:
   name: spiringo
-  env: development   # development | test | staging | production
+  env: local         # local | dev | prod
   debug: true
 
 server:
-  addr: ":8080"
+  host: "127.0.0.1"
+  port: 8080
+  addr: ""           # 可选：填写后覆盖 host + port
   mode: "debug"      # debug | release | test
+  public_url: "http://127.0.0.1:8080"
+  api_base_url: "http://127.0.0.1:8080/api/v1"
 
 config_center:        # 配置中心（可选）
   enabled: false
@@ -1564,32 +1567,29 @@ func (r *Registry) InitAll(app *App) error {
 
 ### 9.2 多环境管理
 
-配置文件按环境分离：
+配置文件使用单文件模型：
 
 ```
-configs/config.yaml           — 默认/开发环境
-configs/config.test.yaml      — 测试环境覆盖
-configs/config.staging.yaml   — 预发环境覆盖
-configs/config.prod.yaml      — 生产环境覆盖
+configs/config.yaml           — 唯一应用配置文件，app.env 标记 local/dev/prod，environments.<env> 保存覆盖项
 ```
 
 **环境切换方式**：
 
 ```bash
 # 方式1：环境变量
-export APP_ENV=production
+export APP_ENV=prod
 ./spiringo
 
 # 方式2：命令行参数
-./spiringo -env production
+./spiringo -env prod
 
-# 方式3：配置中心（自动按环境拉取，Nacos namespace = 环境标识）
+# 方式3：配置中心（可按 app.env 选择 namespace/key）
 ```
 
 **配置合并优先级**（从高到低）：
 
 ```
-环境变量 > 配置中心 > 环境配置文件(config.{env}.yaml) > 默认配置文件(config.yaml) > 代码默认值
+环境变量 > 配置中心 > 当前环境段(environments.<env>) > 默认配置文件(config.yaml) > 代码默认值
 ```
 
 ### 9.3 CLI 代码生成器
@@ -1646,7 +1646,7 @@ build:
 	go build -o bin/spiringo cmd/spiringo/main.go
 
 run:
-	go run cmd/spiringo/main.go -env development
+	go run cmd/spiringo/main.go -env local
 
 test:
 	go test -v -cover ./...

@@ -8,7 +8,7 @@
 docker build -t spiringo-serverless:latest -f deployments/docker/Dockerfile.serverless .
 ```
 
-`cmd/spiringo-serverless` 会在未显式设置 `SP_SERVER_ADDR` 时读取平台注入的 `PORT`，并转换为 Spiringo 的监听地址。
+`cmd/spiringo-serverless` 会在未显式设置 `SP_SERVER_ADDR` / `SP_SERVER_PORT` 时读取平台注入的 `PORT`，并写入统一的 `server.port` 配置。对外访问地址建议通过 `SP_SERVER_PUBLIC_URL` 和 `SP_SERVER_API_BASE_URL` 显式设置。
 
 ## Knative
 

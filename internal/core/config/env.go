@@ -6,6 +6,19 @@ import (
 	"strings"
 )
 
+// 中文：NormalizeEnv 将历史环境名归一化为当前配置文件使用的短名称。
+// English: NormalizeEnv normalizes legacy environment names to the short names used by config files.
+func NormalizeEnv(env string) string {
+	switch strings.ToLower(strings.TrimSpace(env)) {
+	case "development":
+		return "dev"
+	case "production":
+		return "prod"
+	default:
+		return strings.ToLower(strings.TrimSpace(env))
+	}
+}
+
 // 中文：EnvSource 定义当前包使用的数据结构或接口。
 // English: EnvSource defines a data structure or interface used by this package.
 // EnvSource 环境变量配置源

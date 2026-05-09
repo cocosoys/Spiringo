@@ -17,7 +17,7 @@ func TestRunMigrateRequiresUp(t *testing.T) {
 // 中文：TestNewApplicationParsesConfigAndEnv 验证相关行为符合预期。
 // English: TestNewApplicationParsesConfigAndEnv verifies the related behavior.
 func TestNewApplicationParsesConfigAndEnv(t *testing.T) {
-	app, err := newApplication([]string{"-config", "configs", "-env", "test"})
+	app, err := newApplication([]string{"-config", "configs", "-env", "dev"})
 	if err != nil {
 		t.Fatal(err)
 	}

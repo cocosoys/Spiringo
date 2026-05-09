@@ -108,7 +108,7 @@ model.UserRole{}
 ```powershell
 $env:GOARCH='amd64'
 $env:CGO_ENABLED='1'
-go run ./cmd/spiringo migrate up -env development -config configs
+go run ./cmd/spiringo migrate up -env local -config configs
 ```
 
 ## 6. HTTP 接口
@@ -194,4 +194,3 @@ RBAC 模块还包含 ABAC 服务，可基于属性判断访问，例如：
 - 有 token 但无权限：确认角色和权限绑定已写入，并且权限点的 resource/action 与中间件一致。
 - 本地调试想跳过鉴权：可以临时设置 `modules.rbac.auth_required: false`，但不要用于生产。
 - 复制到新项目后初始化失败：确认 `auth.NewAuthModule()` 已注册，且认证模块已把 `AuthService` 注入 DI。
-

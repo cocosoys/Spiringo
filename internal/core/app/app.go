@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -116,6 +118,9 @@ type RuntimeReport struct {
 	// 中文：Env 保存当前结构中的配置或数据值。
 	// English: Env stores a configuration or data value for this struct.
 	Env string `json:"env"`
+	// 中文：Server 保存当前结构中的配置或数据值。
+	// English: Server stores a configuration or data value for this struct.
+	Server ServerSnapshot `json:"server"`
 	// 中文：Modules 保存当前结构中的配置或数据值。
 	// English: Modules stores a configuration or data value for this struct.
 	Modules []module.ModuleSnapshot `json:"modules"`
@@ -125,6 +130,21 @@ type RuntimeReport struct {
 	// 中文：Metrics 保存当前结构中的配置或数据值。
 	// English: Metrics stores a configuration or data value for this struct.
 	Metrics *metricspkg.Snapshot `json:"metrics,omitempty"`
+}
+
+// 中文：ServerSnapshot 定义当前包使用的数据结构或接口。
+// English: ServerSnapshot defines a data structure or interface used by this package.
+// ServerSnapshot records resolved runtime network addresses for deployment checks.
+type ServerSnapshot struct {
+	// 中文：ListenAddr 保存当前结构中的配置或数据值。
+	// English: ListenAddr stores a configuration or data value for this struct.
+	ListenAddr string `json:"listen_addr"`
+	// 中文：PublicURL 保存当前结构中的配置或数据值。
+	// English: PublicURL stores a configuration or data value for this struct.
+	PublicURL string `json:"public_url,omitempty"`
+	// 中文：APIBaseURL 保存当前结构中的配置或数据值。
+	// English: APIBaseURL stores a configuration or data value for this struct.
+	APIBaseURL string `json:"api_base_url,omitempty"`
 }
 
 // 中文：InfrastructureSnapshot 定义当前包使用的数据结构或接口。
@@ -185,7 +205,7 @@ func WithConfigDir(dir string) Option {
 // WithEnv sets the runtime environment name.
 func WithEnv(env string) Option {
 	return func(a *App) {
-		a.env = env
+		a.env = config.NormalizeEnv(env)
 	}
 }
 
@@ -388,15 +408,17 @@ func (a *App) loadRuntimeConfig() error {
 	if a.configDir == "" {
 		a.configDir = "configs"
 	}
-	if a.env == "" {
-		a.env = firstNonEmpty(os.Getenv("APP_ENV"), a.config.GetString("app.env"), "development")
-	}
 	a.config.SetConfigDir(a.configDir)
-	a.config.SetEnv(a.env)
+	if env := firstNonEmpty(a.env, os.Getenv("APP_ENV")); env != "" {
+		a.config.SetEnv(env)
+	}
 
 	if err := a.config.Load(); err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
+	a.env = firstNonEmpty(a.config.Env(), "local")
+	a.config.SetEnv(a.env)
+	a.config.Set("app.env", a.env)
 	if err := a.initConfigCenter(); err != nil {
 		return err
 	}
@@ -1101,13 +1123,63 @@ func (a *App) serverConfig() (config.ServerConfig, error) {
 	if err := a.config.Unmarshal("server", &cfg); err != nil {
 		return cfg, fmt.Errorf("parse server config: %w", err)
 	}
-	if cfg.Addr == "" {
-		cfg.Addr = ":8080"
+	addr, err := resolveServerListenAddr(cfg)
+	if err != nil {
+		return cfg, err
 	}
+	cfg.Addr = addr
 	if cfg.Mode == "" {
 		cfg.Mode = gin.DebugMode
 	}
+	if cfg.PublicURL == "" {
+		cfg.PublicURL = deriveServerPublicURL(cfg)
+	}
+	if cfg.APIBaseURL == "" && cfg.PublicURL != "" {
+		cfg.APIBaseURL = strings.TrimRight(cfg.PublicURL, "/") + "/api/v1"
+	}
+	a.config.Set("server.addr", cfg.Addr)
+	a.config.Set("server.public_url", cfg.PublicURL)
+	a.config.Set("server.api_base_url", cfg.APIBaseURL)
 	return cfg, nil
+}
+
+// 中文：resolveServerListenAddr 根据配置解析最终监听地址。
+// English: resolveServerListenAddr resolves the final listen address from configuration.
+func resolveServerListenAddr(cfg config.ServerConfig) (string, error) {
+	if addr := strings.TrimSpace(cfg.Addr); addr != "" {
+		return addr, nil
+	}
+	if cfg.Port <= 0 {
+		return "", fmt.Errorf("server.port is required when server.addr is empty")
+	}
+	return net.JoinHostPort(strings.TrimSpace(cfg.Host), strconv.Itoa(cfg.Port)), nil
+}
+
+// 中文：deriveServerPublicURL 从监听配置推导仅用于开发兜底的公开地址。
+// English: deriveServerPublicURL derives a development fallback public URL from listen settings.
+func deriveServerPublicURL(cfg config.ServerConfig) string {
+	host := strings.TrimSpace(cfg.Host)
+	port := cfg.Port
+	if port <= 0 && strings.TrimSpace(cfg.Addr) != "" {
+		if splitHost, splitPort, err := net.SplitHostPort(cfg.Addr); err == nil {
+			host = splitHost
+			if parsed, parseErr := strconv.Atoi(splitPort); parseErr == nil {
+				port = parsed
+			}
+		}
+	}
+	if port <= 0 {
+		return ""
+	}
+	switch host {
+	case "", "0.0.0.0", "::", "[::]":
+		host = "127.0.0.1"
+	}
+	host = strings.Trim(host, "[]")
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	return "http://" + host + ":" + strconv.Itoa(port)
 }
 
 // 中文：middlewareConfig 执行当前包中的对应流程。
@@ -1226,9 +1298,15 @@ func (a *App) registerSystemRoutes() {
 func (a *App) RuntimeReport() RuntimeReport {
 	appName := "spiringo"
 	env := a.env
+	var serverSnapshot ServerSnapshot
 	if a.config != nil {
 		appName = firstNonEmpty(a.config.GetString("app.name"), appName)
 		env = firstNonEmpty(env, a.config.GetString("app.env"))
+		serverSnapshot = ServerSnapshot{
+			ListenAddr: a.config.GetString("server.addr"),
+			PublicURL:  a.config.GetString("server.public_url"),
+			APIBaseURL: a.config.GetString("server.api_base_url"),
+		}
 	}
 	if env == "" {
 		env = "unknown"
@@ -1242,6 +1320,7 @@ func (a *App) RuntimeReport() RuntimeReport {
 	report := RuntimeReport{
 		AppName: appName,
 		Env:     env,
+		Server:  serverSnapshot,
 		Modules: modules,
 		Infrastructure: InfrastructureSnapshot{
 			Database: a.db != nil,
@@ -1271,6 +1350,11 @@ func (a *App) WriteRuntimeReport(w io.Writer) error {
 	report := a.RuntimeReport()
 	if _, err := fmt.Fprintf(w, "# Spiringo Runtime Report\n\nApp: `%s`\n\nEnv: `%s`\n\n", report.AppName, report.Env); err != nil {
 		return err
+	}
+	if report.Server.ListenAddr != "" || report.Server.PublicURL != "" || report.Server.APIBaseURL != "" {
+		if _, err := fmt.Fprintf(w, "Listen: `%s`\n\nPublic URL: `%s`\n\nAPI Base URL: `%s`\n\n", report.Server.ListenAddr, report.Server.PublicURL, report.Server.APIBaseURL); err != nil {
+			return err
+		}
 	}
 
 	if _, err := fmt.Fprintln(w, "## Infrastructure"); err != nil {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -123,6 +125,97 @@ func TestEnvKeyVariantsIncludeSnakeCaseLeafFields(t *testing.T) {
 		if !containsString(variants, want) {
 			t.Fatalf("variants missing %q: %#v", want, variants)
 		}
+	}
+}
+
+// 中文：TestNormalizeEnvAliases 验证历史环境名会映射到当前短名称。
+// English: TestNormalizeEnvAliases verifies legacy environment names map to current short names.
+func TestNormalizeEnvAliases(t *testing.T) {
+	tests := map[string]string{
+		"development": "dev",
+		"DEV":         "dev",
+		"production":  "prod",
+		"Prod":        "prod",
+		" local ":     "local",
+		"test":        "test",
+	}
+	for input, want := range tests {
+		if got := NormalizeEnv(input); got != want {
+			t.Fatalf("NormalizeEnv(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+// 中文：TestManagerUsesSingleConfigEnvMarker 验证单一配置文件中的 app.env 会成为当前环境。
+// English: TestManagerUsesSingleConfigEnvMarker verifies app.env in the single config file becomes the current environment.
+func TestManagerUsesSingleConfigEnvMarker(t *testing.T) {
+	dir := t.TempDir()
+	configData := []byte(`app:
+  name: base
+  env: development
+environments:
+  dev:
+    app:
+      name: dev
+    database:
+      default:
+        driver: sqlite
+`)
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), configData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	m := NewManager()
+	m.SetConfigDir(dir)
+	if err := m.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.Env(); got != "dev" {
+		t.Fatalf("env = %q, want dev", got)
+	}
+	if got := m.GetString("app.name"); got != "dev" {
+		t.Fatalf("app.name = %q, want dev", got)
+	}
+	if got := m.GetString("database.default.driver"); got != "sqlite" {
+		t.Fatalf("database.default.driver = %q, want sqlite", got)
+	}
+}
+
+// 中文：TestManagerSetEnvSelectsSingleConfigProfile 验证显式环境覆盖只选择同一配置文件内的环境段。
+// English: TestManagerSetEnvSelectsSingleConfigProfile verifies explicit env override selects a profile from the same config file.
+func TestManagerSetEnvSelectsSingleConfigProfile(t *testing.T) {
+	dir := t.TempDir()
+	configData := []byte(`app:
+  name: base
+  env: local
+environments:
+  local:
+    app:
+      name: local
+  prod:
+    app:
+      name: prod
+    server:
+      mode: release
+`)
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), configData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	m := NewManager()
+	m.SetConfigDir(dir)
+	m.SetEnv("production")
+	if err := m.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.Env(); got != "prod" {
+		t.Fatalf("env = %q, want prod", got)
+	}
+	if got := m.GetString("app.name"); got != "prod" {
+		t.Fatalf("app.name = %q, want prod", got)
+	}
+	if got := m.GetString("server.mode"); got != "release" {
+		t.Fatalf("server.mode = %q, want release", got)
 	}
 }
 

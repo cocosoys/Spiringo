@@ -4,7 +4,7 @@ info:
   version: 0.2.0
   description: REST API contract for the current Spiringo modular-monolith modules.
 servers:
-  - url: http://localhost:8080
+  - url: http://127.0.0.1:8080
 tags:
   - name: system
   - name: auth
@@ -808,6 +808,8 @@ components:
           type: string
         env:
           type: string
+        server:
+          $ref: "#/components/schemas/ServerSnapshot"
         modules:
           type: array
           items:
@@ -818,6 +820,18 @@ components:
           type: object
           additionalProperties: true
           nullable: true
+    ServerSnapshot:
+      type: object
+      properties:
+        listen_addr:
+          type: string
+          example: 127.0.0.1:8080
+        public_url:
+          type: string
+          example: http://127.0.0.1:8080
+        api_base_url:
+          type: string
+          example: http://127.0.0.1:8080/api/v1
     ModuleSnapshot:
       type: object
       properties:

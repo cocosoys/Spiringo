@@ -86,13 +86,13 @@ go build ./cmd/spiringo ./cmd/spiringo-cli ./cmd/spiringo-serverless
 ### 4. Start the Development Server
 
 ```bash
-go run ./cmd/spiringo -env development -config configs
+go run ./cmd/spiringo -env local -config configs
 ```
 
 ### 5. Run Migrations Only
 
 ```bash
-go run ./cmd/spiringo migrate up -env development -config configs
+go run ./cmd/spiringo migrate up -env local -config configs
 ```
 
 ## CLI Usage
@@ -111,15 +111,13 @@ See the [CLI documentation](docs/cli.zh-CN.md) for details.
 
 ## Configuration and Environments
 
-Configuration files live under `configs/`. The repository includes examples for development, test, staging, and production:
+Configuration is centralized in `configs/config.yaml`. The active runtime environment is marked by `app.env`, which supports `local`, `dev`, and `prod`; profile-specific overrides live in the same file under `environments.<env>`:
 
 - `configs/config.yaml`
-- `configs/config.development.yaml`
-- `configs/config.test.yaml`
-- `configs/config.staging.yaml`
-- `configs/config.production.yaml`
 
-Use `-env` and `-config` to select the environment and configuration directory. The config manager merges local files, environment variables, and optional Nacos/Consul remote sources.
+Use `-env` or `APP_ENV` to temporarily override `app.env` and select the matching profile section. `development` maps to `dev`, and `production` maps to `prod` for compatibility. The config manager merges the local file, optional config-center sources, and `SP_` environment variables.
+
+Server listen and external access settings are centralized under `server`: `server.host` / `server.port` build the listen address, `server.addr` remains a full-address override, and `server.public_url` plus `server.api_base_url` are intended for payment callbacks, OAuth callbacks, frontend integration, and deployment docs. When reusing the project, update this block and the matching environment profile first.
 
 ## System Endpoints
 

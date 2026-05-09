@@ -14,9 +14,12 @@ ingress:
   host: spiringo.example.com
 
 env:
-  APP_ENV: production
+  APP_ENV: prod
   SP_APP_DEBUG: "false"
-  SP_SERVER_ADDR: ":8080"
+  SP_SERVER_HOST: "0.0.0.0"
+  SP_SERVER_PORT: "8080"
+  SP_SERVER_PUBLIC_URL: "https://api.example.com"
+  SP_SERVER_API_BASE_URL: "https://api.example.com/api/v1"
   SP_SERVER_MODE: release
   SP_LOG_LEVEL: info
   SP_DATABASE_DEFAULT_DRIVER: mysql

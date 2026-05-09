@@ -113,6 +113,9 @@ modules:
 func TestAppRuntimeReportIncludesModulesAndMetrics(t *testing.T) {
 	a := New(WithEnv("test"))
 	a.config.Set("app.name", "demo")
+	a.config.Set("server.addr", "127.0.0.1:9090")
+	a.config.Set("server.public_url", "http://127.0.0.1:9090")
+	a.config.Set("server.api_base_url", "http://127.0.0.1:9090/api/v1")
 
 	m := module.NewBaseModule("tenant")
 	m.SetState(module.ModuleStateActive)
@@ -128,6 +131,9 @@ func TestAppRuntimeReportIncludesModulesAndMetrics(t *testing.T) {
 	if report.AppName != "demo" || report.Env != "test" {
 		t.Fatalf("unexpected app identity: %+v", report)
 	}
+	if report.Server.ListenAddr != "127.0.0.1:9090" || report.Server.APIBaseURL != "http://127.0.0.1:9090/api/v1" {
+		t.Fatalf("unexpected server snapshot: %+v", report.Server)
+	}
 	if len(report.Modules) != 1 || report.Modules[0].Name != "tenant" || report.Modules[0].State != module.ModuleStateActive.String() {
 		t.Fatalf("unexpected modules: %+v", report.Modules)
 	}
@@ -140,10 +146,44 @@ func TestAppRuntimeReportIncludesModulesAndMetrics(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := b.String()
-	for _, want := range []string{"# Spiringo Runtime Report", "| `tenant` | `active` | `enabled` | - |", "Counters: `1`"} {
+	for _, want := range []string{"# Spiringo Runtime Report", "Listen: `127.0.0.1:9090`", "| `tenant` | `active` | `enabled` | - |", "Counters: `1`"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected report to contain %q, got:\n%s", want, output)
 		}
+	}
+}
+
+// 中文：TestServerConfigBuildsListenAddrFromHostAndPort 验证监听地址由配置文件中的 host 与 port 生成。
+// English: TestServerConfigBuildsListenAddrFromHostAndPort verifies the listen address is built from configured host and port.
+func TestServerConfigBuildsListenAddrFromHostAndPort(t *testing.T) {
+	a := New(WithEnv("test"))
+	a.config.Set("server.host", "127.0.0.1")
+	a.config.Set("server.port", 9090)
+	a.config.Set("server.mode", "debug")
+	a.config.Set("server.public_url", "http://dev.example.test:9090")
+
+	cfg, err := a.serverConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Addr != "127.0.0.1:9090" {
+		t.Fatalf("addr = %q, want 127.0.0.1:9090", cfg.Addr)
+	}
+	if cfg.APIBaseURL != "http://dev.example.test:9090/api/v1" {
+		t.Fatalf("api_base_url = %q", cfg.APIBaseURL)
+	}
+	if got := a.config.GetString("server.addr"); got != "127.0.0.1:9090" {
+		t.Fatalf("stored server.addr = %q", got)
+	}
+}
+
+// 中文：TestServerConfigRequiresConfiguredPort 验证缺少监听配置时不会在代码里静默使用硬编码端口。
+// English: TestServerConfigRequiresConfiguredPort verifies missing listen settings do not silently use a hard-coded port.
+func TestServerConfigRequiresConfiguredPort(t *testing.T) {
+	a := New(WithEnv("test"))
+	_, err := a.serverConfig()
+	if err == nil || !strings.Contains(err.Error(), "server.port is required") {
+		t.Fatalf("expected server.port error, got %v", err)
 	}
 }
 

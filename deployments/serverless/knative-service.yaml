@@ -15,9 +15,13 @@ spec:
             - containerPort: 8080
           env:
             - name: APP_ENV
-              value: production
+              value: prod
             - name: PORT
               value: "8080"
+            - name: SP_SERVER_PUBLIC_URL
+              value: "https://api.example.com"
+            - name: SP_SERVER_API_BASE_URL
+              value: "https://api.example.com/api/v1"
             - name: SP_DATABASE_DEFAULT_DRIVER
               value: mysql
             - name: SP_DATABASE_DEFAULT_DSN

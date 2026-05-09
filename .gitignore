@@ -36,7 +36,3 @@ tmp/
 # Local agent/runtime state
 .omx/
 .qwen/
-
-# Config overrides
-configs/config.prod.yaml
-configs/config.staging.yaml

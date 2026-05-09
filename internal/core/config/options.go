@@ -22,9 +22,21 @@ type ServerConfig struct {
 	// 中文：Addr 保存当前结构中的配置或数据值。
 	// English: Addr stores a configuration or data value for this struct.
 	Addr string `yaml:"addr" mapstructure:"addr"`
+	// 中文：Host 保存当前结构中的配置或数据值。
+	// English: Host stores a configuration or data value for this struct.
+	Host string `yaml:"host" mapstructure:"host"`
+	// 中文：Port 保存当前结构中的配置或数据值。
+	// English: Port stores a configuration or data value for this struct.
+	Port int `yaml:"port" mapstructure:"port"`
 	// 中文：Mode 保存当前结构中的配置或数据值。
 	// English: Mode stores a configuration or data value for this struct.
 	Mode string `yaml:"mode" mapstructure:"mode"`
+	// 中文：PublicURL 保存当前结构中的配置或数据值。
+	// English: PublicURL stores a configuration or data value for this struct.
+	PublicURL string `yaml:"public_url" mapstructure:"public_url"`
+	// 中文：APIBaseURL 保存当前结构中的配置或数据值。
+	// English: APIBaseURL stores a configuration or data value for this struct.
+	APIBaseURL string `yaml:"api_base_url" mapstructure:"api_base_url"`
 }
 
 // 中文：LogConfig 定义当前包使用的数据结构或接口。

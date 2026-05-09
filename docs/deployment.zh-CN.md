@@ -6,14 +6,14 @@
 
 ```bash
 go build -o bin/spiringo ./cmd/spiringo
-APP_ENV=development ./bin/spiringo -config configs
+APP_ENV=local ./bin/spiringo -config configs
 ```
 
 Windows PowerShell：
 
 ```powershell
 go build -o .\bin\spiringo.exe .\cmd\spiringo
-$env:APP_ENV = "development"
+$env:APP_ENV = "local"
 .\bin\spiringo.exe -config configs
 ```
 
@@ -43,11 +43,11 @@ helm upgrade --install spiringo deployments/helm/spiringo -f deployments/helm/sp
 当前提供：
 
 - `values-dev.yaml`
-- `values-test.yaml`
-- `values-staging.yaml`
+- `values-test.yaml`（复用 `dev` 应用配置段，测试差异通过 Helm 环境变量覆盖）
+- `values-staging.yaml`（复用 `prod` 应用配置段，预发差异通过 Helm 环境变量覆盖）
 - `values-prod.yaml`
 
-生产环境必须替换 Secret、镜像仓库和数据库/缓存连接。
+环境名约定为 `local`、`dev`、`prod`；历史名称 `development` 和 `production` 会分别映射到 `dev` 和 `prod`。生产环境必须替换 Secret、镜像仓库和数据库/缓存连接。
 
 ## Serverless
 
@@ -58,7 +58,7 @@ docker build -t spiringo-serverless:latest -f deployments/docker/Dockerfile.serv
 kubectl apply -f deployments/serverless/knative-service.yaml
 ```
 
-该入口会读取平台注入的 `PORT` 并设置 `SP_SERVER_ADDR`。AWS Lambda 事件模型需要额外 adapter，当前仓库未引入对应依赖。
+该入口会读取平台注入的 `PORT` 并设置 `SP_SERVER_PORT`，仍然允许用 `SP_SERVER_ADDR` 直接覆盖完整监听地址。对外访问地址请通过 `SP_SERVER_PUBLIC_URL` 和 `SP_SERVER_API_BASE_URL` 集中配置。AWS Lambda 事件模型需要额外 adapter，当前仓库未引入对应依赖。
 
 ## Trace / OTLP
 

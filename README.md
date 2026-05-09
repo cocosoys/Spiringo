@@ -45,7 +45,7 @@ cmd/
   spiringo/              主服务与迁移命令入口
   spiringo-cli/          代码生成 CLI
   spiringo-serverless/   Serverless 入口示例
-configs/                多环境配置
+configs/                单文件多环境配置：app.env、environments.local/dev/prod、server 地址段
 docs/                   架构、API、模块、CLI、部署文档
 deployments/            Docker、Compose、Kubernetes、Helm、观测和 Serverless 模板
 internal/core/          框架核心：App、Config、DI、Event、Middleware、Module、Server、Migration
@@ -86,13 +86,13 @@ go build ./cmd/spiringo ./cmd/spiringo-cli ./cmd/spiringo-serverless
 ### 4. 启动开发环境服务
 
 ```bash
-go run ./cmd/spiringo -env development -config configs
+go run ./cmd/spiringo -env local -config configs
 ```
 
 ### 5. 仅执行迁移
 
 ```bash
-go run ./cmd/spiringo migrate up -env development -config configs
+go run ./cmd/spiringo migrate up -env local -config configs
 ```
 
 ## CLI 用法
@@ -111,15 +111,32 @@ go run ./cmd/spiringo-cli migrate create add_product_table
 
 ## 配置与环境
 
-配置文件位于 `configs/`，项目提供开发、测试、预发、生产等环境配置示例：
+配置文件统一使用 `configs/config.yaml`。当前运行环境由 `app.env` 字段标记，支持 `local`、`dev`、`prod`，对应覆盖内容写在同一文件的 `environments.<env>` 段：
 
 - `configs/config.yaml`
-- `configs/config.development.yaml`
-- `configs/config.test.yaml`
-- `configs/config.staging.yaml`
-- `configs/config.production.yaml`
 
-运行时通过 `-env` 和 `-config` 指定环境与配置目录。配置管理器会合并本地文件、环境变量以及可选的 Nacos/Consul 配置源。
+运行时通过 `-env` 或 `APP_ENV` 可以临时覆盖 `app.env` 并选择对应环境段。`development` 会兼容映射为 `dev`，`production` 会兼容映射为 `prod`。配置管理器会合并本地文件、配置中心以及 `SP_` 前缀环境变量。
+
+服务器启动和对外访问地址也集中在 `server` 段。迁移到其他项目时，优先修改下面这些字段即可快速替换本地端口、服务器 URL 和前后端联调地址：
+
+```yaml
+app:
+  env: local
+
+server:
+  host: "127.0.0.1"
+  port: 8080
+  addr: ""
+  mode: "debug"
+  public_url: "http://127.0.0.1:8080"
+  api_base_url: "http://127.0.0.1:8080/api/v1"
+```
+
+- `server.host` / `server.port`：生成默认监听地址，适合本地、容器和普通服务器部署。
+- `server.addr`：完整监听地址覆盖项，例如 `:8080`，填写后优先级高于 `host + port`。
+- `server.public_url`：服务对外可访问地址，用于支付回调、OAuth 回调、Webhook 和部署文档。
+- `server.api_base_url`：API 基础地址，用于前端联调、OpenAPI 示例和跨项目复制。
+- `database.default.dsn`、`redis.default.addr`、`mq.*`、`storage.*`、`search.*`、`trace.otlp.endpoint`、`alert.*` 等外部服务地址也保留在同一个配置文件中，便于大型项目集中维护。
 
 ## 系统接口
 

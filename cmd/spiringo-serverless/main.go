@@ -12,16 +12,16 @@ import (
 // 中文：main 是当前命令的程序入口。
 // English: main is the entry point for this command.
 func main() {
-	env := flag.String("env", "", "runtime environment name")
+	env := flag.String("env", "", "runtime environment name (local, dev, prod)")
 	configDir := flag.String("config", "configs", "configuration directory")
 	flag.Parse()
 
 	if *env == "" {
-		*env = firstNonEmpty(os.Getenv("APP_ENV"), "production")
+		*env = firstNonEmpty(os.Getenv("APP_ENV"), "prod")
 	}
-	if os.Getenv("SP_SERVER_ADDR") == "" {
+	if os.Getenv("SP_SERVER_ADDR") == "" && os.Getenv("SP_SERVER_PORT") == "" {
 		if port := os.Getenv("PORT"); port != "" {
-			_ = os.Setenv("SP_SERVER_ADDR", ":"+port)
+			_ = os.Setenv("SP_SERVER_PORT", port)
 		}
 	}
 

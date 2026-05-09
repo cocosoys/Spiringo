@@ -1,11 +1,15 @@
 app:
   name: spiringo
-  env: development
+  env: local
   debug: true
 
 server:
-  addr: ":8080"
+  host: "127.0.0.1"
+  port: 8080
+  addr: "" # optional: when set, overrides host + port, e.g. ":8080"
   mode: "debug"
+  public_url: "http://127.0.0.1:8080"
+  api_base_url: "http://127.0.0.1:8080/api/v1"
 
 log:
   driver: "slog"
@@ -128,3 +132,86 @@ middleware:
     enabled: false
     header: "X-Idempotent-Key"
   i18n: false
+
+environments:
+  local:
+    app:
+      env: local
+      debug: true
+    server:
+      host: "127.0.0.1"
+      port: 8080
+      addr: ""
+      mode: "debug"
+      public_url: "http://127.0.0.1:8080"
+      api_base_url: "http://127.0.0.1:8080/api/v1"
+    database:
+      default:
+        driver: "sqlite"
+        dsn: "file:spiringo_local?mode=memory&cache=shared"
+    cache:
+      driver: "memory"
+    mq:
+      enabled: false
+    lock:
+      enabled: false
+    middleware:
+      rate_limit:
+        enabled: false
+      auth:
+        enabled: false
+
+  dev:
+    app:
+      env: dev
+      debug: true
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      addr: ""
+      mode: "debug"
+      public_url: "http://127.0.0.1:8080"
+      api_base_url: "http://127.0.0.1:8080/api/v1"
+    database:
+      default:
+        driver: "sqlite"
+        dsn: "file:spiringo_dev?mode=memory&cache=shared"
+    cache:
+      driver: "memory"
+    mq:
+      enabled: false
+    lock:
+      enabled: false
+    middleware:
+      rate_limit:
+        enabled: true
+      auth:
+        enabled: false
+
+  prod:
+    app:
+      env: prod
+      debug: false
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      addr: ""
+      mode: "release"
+      public_url: "https://api.example.com"
+      api_base_url: "https://api.example.com/api/v1"
+    database:
+      default:
+        driver: "mysql"
+        dsn: "replace-with-production-dsn"
+    cache:
+      driver: "redis"
+    mq:
+      enabled: true
+    lock:
+      enabled: true
+    middleware:
+      rate_limit:
+        enabled: true
+      auth:
+        enabled: true
+        jwt_secret: "replace-with-production-secret"
